@@ -10,3 +10,10 @@ export function canAllocate(params: {
     toCents(params.budgetTotal)
   );
 }
+
+export function canSetBudgetTotal(params: {
+  totalAmount: number;
+  currentlyAllocated: number;
+}): boolean {
+  return toCents(params.totalAmount) >= toCents(params.currentlyAllocated);
+}

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { monthSchema, moneySchema, yearSchema } from "@/lib/schemas/common";
+import { idSchema, monthSchema, moneySchema, yearSchema } from "@/lib/schemas/common";
 
 export const createBudgetSchema = z.object({
   month: monthSchema,
@@ -10,4 +10,9 @@ export const createBudgetSchema = z.object({
 export const getBudgetByMonthSchema = z.object({
   month: monthSchema,
   year: yearSchema,
+});
+
+export const updateBudgetSchema = z.object({
+  id: idSchema,
+  totalAmount: moneySchema,
 });

@@ -33,3 +33,19 @@ export async function getOwnedCategory(
 
   return category;
 }
+
+export async function getOwnedExpense(
+  prisma: PrismaClient,
+  sessionId: string,
+  expenseId: string,
+) {
+  const expense = await prisma.expense.findFirst({
+    where: { id: expenseId, category: { budget: { sessionId } } },
+  });
+
+  if (!expense) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Expense not found" });
+  }
+
+  return expense;
+}

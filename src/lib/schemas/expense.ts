@@ -12,3 +12,15 @@ export const createExpenseSchema = z.object({
     .transform((value) => value || undefined),
   date: z.coerce.date(),
 });
+
+export const updateExpenseSchema = z.object({
+  id: idSchema,
+  amount: moneySchema,
+  description: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((value) => value || undefined),
+  date: z.coerce.date(),
+});

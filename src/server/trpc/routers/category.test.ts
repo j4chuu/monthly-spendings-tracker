@@ -89,3 +89,40 @@ describe("category.create", () => {
     expect(create).toHaveBeenCalledOnce();
   });
 });
+
+describe("category.update", () => {
+  it("allows raising an allocation using the category's own previous amount", async () => {
+    const update = vi.fn().mockResolvedValue({
+      id: "cat_1",
+      budgetId: "budget_1",
+      name: "Food",
+      allocatedAmount: new Prisma.Decimal("900"),
+      color: "#22c55e",
+    });
+
+    const caller = createCallerWithPrisma({
+      category: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "cat_1",
+          budgetId: "budget_1",
+          allocatedAmount: new Prisma.Decimal("800"),
+          budget: { totalAmount: new Prisma.Decimal("1000") },
+        }),
+        aggregate: vi.fn().mockResolvedValue({
+          _sum: { allocatedAmount: new Prisma.Decimal("800") },
+        }),
+        update,
+      },
+    });
+
+    const result = await caller.category.update({
+      id: "cat_1",
+      name: "Food",
+      allocatedAmount: 900,
+      color: "#22c55e",
+    });
+
+    expect(result.allocatedAmount).toBe(900);
+    expect(update).toHaveBeenCalledOnce();
+  });
+});

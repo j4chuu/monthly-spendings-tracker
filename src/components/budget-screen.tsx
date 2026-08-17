@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { BudgetOverview } from "@/components/budget-overview";
 import { CreateBudgetForm } from "@/components/create-budget-form";
 import { MonthPicker } from "@/components/month-picker";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useMonthStore } from "@/store/month-store";
 import { useTRPC } from "@/trpc/client";
 
@@ -26,7 +27,7 @@ export function BudgetScreen() {
   const isLoading = !isClient || budgetQuery.isLoading;
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-6 py-10">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -36,7 +37,10 @@ export function BudgetScreen() {
             Plan a budget, then split it across spending categories.
           </p>
         </div>
-        <MonthPicker />
+        <div className="flex items-center gap-2">
+          <MonthPicker />
+          <ThemeToggle />
+        </div>
       </header>
 
       {isLoading ? (

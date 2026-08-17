@@ -6,6 +6,7 @@ import type { BudgetDashboard } from "@/lib/types";
 import { AddCategoryDialog } from "@/components/add-category-dialog";
 import { AddExpenseDialog } from "@/components/add-expense-dialog";
 import { CategoryCard } from "@/components/category-card";
+import { EditBudgetDialog } from "@/components/edit-budget-dialog";
 import { ExpenseChart } from "@/components/expense-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ type BudgetOverviewProps = {
 
 export function BudgetOverview({ budget }: BudgetOverviewProps) {
   const openCategoryDialog = useUiStore((state) => state.openCategoryDialog);
+  const openBudgetDialog = useUiStore((state) => state.openBudgetDialog);
   const canAddCategory = budget.unallocated > 0;
 
   return (
@@ -30,41 +32,53 @@ export function BudgetOverview({ budget }: BudgetOverviewProps) {
           tone={budget.remaining < 0 ? "danger" : "default"}
         />
       </div>
-      <p className="text-sm text-muted-foreground">
-        {formatMoney(budget.unallocated)} left to allocate into categories.
-      </p>
-
-      <ExpenseChart categories={budget.categories} />
-
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Categories</h2>
-        <Button
-          type="button"
-          onClick={openCategoryDialog}
-          disabled={!canAddCategory}
-        >
-          Add category
+        <p className="text-sm text-muted-foreground">
+          {formatMoney(budget.unallocated)} left to allocate into categories.
+        </p>
+        <Button type="button" variant="outline" size="sm" onClick={openBudgetDialog}>
+          Edit budget
         </Button>
       </div>
 
-      {budget.categories.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No categories yet</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Split the budget into categories like groceries, rent, or transport.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {budget.categories.map((category) => (
-            <CategoryCard key={category.id} category={category} />
-          ))}
-        </div>
-      )}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section className="order-2 flex min-w-0 flex-col gap-4 lg:order-1">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold tracking-tight">Categories</h2>
+            <Button
+              type="button"
+              onClick={openCategoryDialog}
+              disabled={!canAddCategory}
+            >
+              Add category
+            </Button>
+          </div>
+
+          {budget.categories.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>No categories yet</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Split the budget into categories like groceries, rent, or
+                  transport.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {budget.categories.map((category) => (
+                <CategoryCard key={category.id} category={category} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <aside className="order-1 lg:sticky lg:top-6 lg:order-2">
+          <ExpenseChart categories={budget.categories} />
+        </aside>
+      </div>
 
       <AddCategoryDialog
         budgetId={budget.id}
@@ -72,8 +86,14 @@ export function BudgetOverview({ budget }: BudgetOverviewProps) {
         defaultColor={nextCategoryColor(
           budget.categories.map((category) => category.color),
         )}
+        categories={budget.categories}
       />
       <AddExpenseDialog categories={budget.categories} />
+      <EditBudgetDialog
+        budgetId={budget.id}
+        totalAmount={budget.totalAmount}
+        totalAllocated={budget.totalAllocated}
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
-import { createBudgetSchema, getBudgetByMonthSchema } from "@/lib/schemas/budget";
+import { createBudgetSchema, getBudgetByMonthSchema, updateBudgetSchema } from "@/lib/schemas/budget";
+import { canSetBudgetTotal } from "@/lib/budget-rules";
+import { getOwnedBudget } from "@/server/trpc/access";
 import { decimalToNumber, numberToDecimal } from "@/server/trpc/money";
 import { createTRPCRouter, publicProcedure } from "@/server/trpc/init";
 
@@ -128,5 +130,42 @@ export const budgetRouter = createTRPCRouter({
 
         throw error;
       }
+    }),
+
+  update: publicProcedure
+    .input(updateBudgetSchema)
+    .mutation(async ({ ctx, input }) => {
+      const budget = await getOwnedBudget(ctx.prisma, ctx.sessionId, input.id);
+
+      const allocated = await ctx.prisma.category.aggregate({
+        where: { budgetId: budget.id },
+        _sum: { allocatedAmount: true },
+      });
+
+      const currentlyAllocated = allocated._sum.allocatedAmount
+        ? decimalToNumber(allocated._sum.allocatedAmount)
+        : 0;
+
+      if (
+        !canSetBudgetTotal({
+          totalAmount: input.totalAmount,
+          currentlyAllocated,
+        })
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Budget total cannot be lower than category allocations",
+        });
+      }
+
+      const updated = await ctx.prisma.budget.update({
+        where: { id: budget.id },
+        data: { totalAmount: numberToDecimal(input.totalAmount) },
+      });
+
+      return {
+        id: updated.id,
+        totalAmount: decimalToNumber(updated.totalAmount),
+      };
     }),
 });

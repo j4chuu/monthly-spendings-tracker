@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canAllocate } from "@/lib/budget-rules";
+import { canAllocate, canSetBudgetTotal } from "@/lib/budget-rules";
 
 describe("canAllocate", () => {
   it("allows allocations that fit in the remaining budget", () => {
@@ -30,5 +30,25 @@ describe("canAllocate", () => {
         additionalAmount: 0.2,
       }),
     ).toBe(true);
+  });
+});
+
+describe("canSetBudgetTotal", () => {
+  it("allows a total at least as large as current allocations", () => {
+    expect(
+      canSetBudgetTotal({
+        totalAmount: 1000,
+        currentlyAllocated: 1000,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects a total below current allocations", () => {
+    expect(
+      canSetBudgetTotal({
+        totalAmount: 999.99,
+        currentlyAllocated: 1000,
+      }),
+    ).toBe(false);
   });
 });

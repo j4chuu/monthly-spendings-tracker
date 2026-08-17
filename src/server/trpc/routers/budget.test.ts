@@ -69,3 +69,31 @@ describe("budget.create", () => {
     expect(create).toHaveBeenCalledOnce();
   });
 });
+
+describe("budget.update", () => {
+  it("rejects a total below current category allocations", async () => {
+    const update = vi.fn();
+    const caller = createCallerWithPrisma({
+      budget: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "budget_1",
+          sessionId: SESSION_ID,
+        }),
+        update,
+      },
+      category: {
+        aggregate: vi.fn().mockResolvedValue({
+          _sum: { allocatedAmount: new Prisma.Decimal("3000") },
+        }),
+      },
+    });
+
+    await expect(
+      caller.budget.update({ id: "budget_1", totalAmount: 2500 }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    } satisfies Partial<TRPCError>);
+
+    expect(update).not.toHaveBeenCalled();
+  });
+});

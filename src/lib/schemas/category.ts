@@ -13,3 +13,10 @@ export const createCategorySchema = z.object({
   allocatedAmount: moneySchema,
   color: colorSchema,
 });
+
+export const updateCategorySchema = z.object({
+  id: idSchema,
+  name: z.string().trim().min(1).max(50),
+  allocatedAmount: moneySchema,
+  color: colorSchema,
+});

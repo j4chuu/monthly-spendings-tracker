@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useInvalidateBudget } from "@/hooks/use-invalidate-budget";
 import { CATEGORY_COLORS } from "@/lib/category-colors";
 import { formatMoney, toCents } from "@/lib/money";
-import { createCategorySchema } from "@/lib/schemas/category";
+import {
+  createCategorySchema,
+  updateCategorySchema,
+} from "@/lib/schemas/category";
+import type { BudgetCategory } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,32 +24,69 @@ import { Label } from "@/components/ui/label";
 import { useUiStore } from "@/store/ui-store";
 import { useTRPC } from "@/trpc/client";
 
-type AddCategoryDialogProps = {
+type CategoryDialogProps = {
   budgetId: string;
   unallocated: number;
   defaultColor: string;
+  categories: BudgetCategory[];
 };
 
 export function AddCategoryDialog({
   budgetId,
   unallocated,
   defaultColor,
-}: AddCategoryDialogProps) {
+  categories,
+}: CategoryDialogProps) {
   const trpc = useTRPC();
   const invalidateBudget = useInvalidateBudget();
   const open = useUiStore((state) => state.categoryDialogOpen);
+  const editingCategoryId = useUiStore((state) => state.editingCategoryId);
   const closeCategoryDialog = useUiStore((state) => state.closeCategoryDialog);
+  const editingCategory = categories.find(
+    (category) => category.id === editingCategoryId,
+  );
+  const isEditing = Boolean(editingCategory);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [color, setColor] = useState(defaultColor);
   const [error, setError] = useState<string | null>(null);
 
+  const maxAllocate = editingCategory
+    ? unallocated + editingCategory.allocatedAmount
+    : unallocated;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    if (editingCategory) {
+      setName(editingCategory.name);
+      setAmount(String(editingCategory.allocatedAmount));
+      setColor(editingCategory.color);
+    } else {
+      setName("");
+      setAmount("");
+      setColor(defaultColor);
+    }
+    setError(null);
+  }, [open, editingCategory, defaultColor]);
+
   const createCategory = useMutation(
     trpc.category.create.mutationOptions({
       onSuccess: async () => {
-        setName("");
-        setAmount("");
-        setError(null);
+        closeCategoryDialog();
+        await invalidateBudget();
+      },
+      onError: (mutationError) => {
+        setError(mutationError.message);
+      },
+    }),
+  );
+
+  const updateCategory = useMutation(
+    trpc.category.update.mutationOptions({
+      onSuccess: async () => {
         closeCategoryDialog();
         await invalidateBudget();
       },
@@ -56,18 +97,37 @@ export function AddCategoryDialog({
   );
 
   function handleOpenChange(nextOpen: boolean) {
-    if (nextOpen) {
-      setColor(defaultColor);
-      return;
+    if (!nextOpen) {
+      closeCategoryDialog();
     }
-    setName("");
-    setAmount("");
-    setError(null);
-    closeCategoryDialog();
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isEditing && editingCategory) {
+      const parsed = updateCategorySchema.safeParse({
+        id: editingCategory.id,
+        name,
+        allocatedAmount: Number(amount),
+        color,
+      });
+
+      if (!parsed.success) {
+        setError(parsed.error.issues[0]?.message ?? "Invalid category");
+        return;
+      }
+
+      if (toCents(parsed.data.allocatedAmount) > toCents(maxAllocate)) {
+        setError(
+          `Amount cannot exceed ${formatMoney(maxAllocate)} left to allocate`,
+        );
+        return;
+      }
+
+      updateCategory.mutate(parsed.data);
+      return;
+    }
 
     const parsed = createCategorySchema.safeParse({
       budgetId,
@@ -91,14 +151,18 @@ export function AddCategoryDialog({
     createCategory.mutate(parsed.data);
   }
 
+  const isPending = createCategory.isPending || updateCategory.isPending;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add category</DialogTitle>
+            <DialogTitle>
+              {isEditing ? "Edit category" : "Add category"}
+            </DialogTitle>
             <DialogDescription>
-              {formatMoney(unallocated)} left to allocate from this budget.
+              {formatMoney(maxAllocate)} left to allocate from this budget.
             </DialogDescription>
           </DialogHeader>
 
@@ -141,7 +205,9 @@ export function AddCategoryDialog({
                   style={{
                     backgroundColor: option,
                     boxShadow:
-                      color === option ? "0 0 0 2px var(--foreground)" : undefined,
+                      color === option
+                        ? "0 0 0 2px var(--foreground)"
+                        : undefined,
                   }}
                   onClick={() => setColor(option)}
                 />
@@ -152,8 +218,12 @@ export function AddCategoryDialog({
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <DialogFooter>
-            <Button type="submit" disabled={createCategory.isPending}>
-              {createCategory.isPending ? "Adding…" : "Add category"}
+            <Button type="submit" disabled={isPending}>
+              {isPending
+                ? "Saving…"
+                : isEditing
+                  ? "Save category"
+                  : "Add category"}
             </Button>
           </DialogFooter>
         </form>
