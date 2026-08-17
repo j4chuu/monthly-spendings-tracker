@@ -6,6 +6,7 @@ import type { BudgetDashboard } from "@/lib/types";
 import { AddCategoryDialog } from "@/components/add-category-dialog";
 import { AddExpenseDialog } from "@/components/add-expense-dialog";
 import { CategoryCard } from "@/components/category-card";
+import { ExpenseChart } from "@/components/expense-chart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUiStore } from "@/store/ui-store";
@@ -32,6 +33,8 @@ export function BudgetOverview({ budget }: BudgetOverviewProps) {
       <p className="text-sm text-muted-foreground">
         {formatMoney(budget.unallocated)} left to allocate into categories.
       </p>
+
+      <ExpenseChart categories={budget.categories} />
 
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold tracking-tight">Categories</h2>
