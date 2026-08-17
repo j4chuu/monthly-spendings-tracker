@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BudgetOverview } from "@/components/budget-overview";
 import { CreateBudgetForm } from "@/components/create-budget-form";
@@ -11,9 +12,18 @@ export function BudgetScreen() {
   const trpc = useTRPC();
   const month = useMonthStore((state) => state.month);
   const year = useMonthStore((state) => state.year);
-  const budgetQuery = useQuery(
-    trpc.budget.getByMonth.queryOptions({ month, year }),
-  );
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const budgetQuery = useQuery({
+    ...trpc.budget.getByMonth.queryOptions({ month, year }),
+    enabled: isClient,
+  });
+
+  const isLoading = !isClient || budgetQuery.isLoading;
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-6 py-10">
@@ -29,7 +39,7 @@ export function BudgetScreen() {
         <MonthPicker />
       </header>
 
-      {budgetQuery.isPending ? (
+      {isLoading ? (
         <p className="text-sm text-muted-foreground">Loading budget…</p>
       ) : null}
 
@@ -37,16 +47,11 @@ export function BudgetScreen() {
         <p className="text-sm text-destructive">{budgetQuery.error.message}</p>
       ) : null}
 
-      {budgetQuery.data === null ? <CreateBudgetForm /> : null}
-
-      {budgetQuery.data ? (
-        <BudgetOverview
-          totalAmount={budgetQuery.data.totalAmount}
-          totalSpent={budgetQuery.data.totalSpent}
-          remaining={budgetQuery.data.remaining}
-          unallocated={budgetQuery.data.unallocated}
-        />
+      {budgetQuery.isSuccess && budgetQuery.data === null ? (
+        <CreateBudgetForm />
       ) : null}
+
+      {budgetQuery.data ? <BudgetOverview budget={budgetQuery.data} /> : null}
     </main>
   );
 }
