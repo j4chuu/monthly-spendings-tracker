@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Budget {
+  id          String     @id @default(cuid())
+  sessionId   String
+  month       Int
+  year        Int
+  totalAmount Decimal    @db.Decimal(12, 2)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  categories  Category[]
+
+  @@unique([sessionId, month, year])
+  @@index([sessionId])
+}
+
+model Category {
+  id              String    @id @default(cuid())
+  budgetId        String
+  name            String
+  allocatedAmount Decimal   @db.Decimal(12, 2)
+  color           String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  budget          Budget    @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  expenses        Expense[]
+
+  @@index([budgetId])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  categoryId  String
+  amount      Decimal  @db.Decimal(12, 2)
+  description String?
+  date        DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+}
